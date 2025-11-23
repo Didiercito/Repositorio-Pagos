@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 
-// Reutilizamos la misma interfaz del otro archivo
 interface UserPayload {
   userId: number;
   email: string;
@@ -40,7 +39,7 @@ export function requireRole(requiredRole: string) {
         });
       }
 
-      req.user = decoded; // Adjuntamos el usuario también aquí
+      req.user = decoded; 
       next();
 
     } catch (error) {

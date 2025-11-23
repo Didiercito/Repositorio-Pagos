@@ -1,20 +1,14 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 
-// Esta interfaz define cómo se ve tu "payload" de usuario
-// Lo basé en los campos de tu archivo original [cite: 155-157]
 interface UserPayload {
   userId: number;
   email: string;
   roles: string[];
   stateId?: number | null;
   municipalityId?: number | null;
-  // Añade aquí cualquier otro campo que venga en tu JWT
 }
 
-// --- ESTO ES MAGIA DE TYPESCRIPT ---
-// Le decimos a TypeScript que el objeto 'Request' de Express
-// puede tener una propiedad 'user' que nosotros definimos.
 declare global {
   namespace Express {
     interface Request {
@@ -22,7 +16,6 @@ declare global {
     }
   }
 }
-// ----------------------------------
 
 export function requireAuth(
   req: Request,
@@ -46,8 +39,6 @@ export function requireAuth(
 
   try {
     const decoded = jwt.verify(token, jwtSecret) as UserPayload;
-
-    // Adjuntamos el payload del usuario al objeto 'req'
     req.user = decoded;
 
     next();
