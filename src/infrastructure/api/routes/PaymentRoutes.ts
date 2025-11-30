@@ -4,7 +4,10 @@ import { requireAuth } from '../../../middleware/require-auth';
 import { requireRole } from '../../../middleware/require-role';
 
 const router = Router();
+
 const ROLE_ADMIN_COCINA = 'admin de cocina';
+const ROLE_VOLUNTARIO = 'Voluntario'; 
+
 
 router.get(
   '/balance',
@@ -20,7 +23,7 @@ router.get(
 
 router.post(
   '/create-intent',
-  requireAuth,
+  requireRole(ROLE_VOLUNTARIO),
   paymentController.createPayment
 );
 

@@ -7,6 +7,7 @@ interface UserPayload {
   roles: string[];
   stateId?: number | null;
   municipalityId?: number | null;
+  kitchenId?: string;
 }
 
 declare global {

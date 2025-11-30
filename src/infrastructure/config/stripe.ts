@@ -7,7 +7,7 @@ dotenv.config();
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
 if (!stripeSecretKey) {
-  console.error('❌ Error: STRIPE_SECRET_KEY no está definida en .env');
+  console.error('Error: STRIPE_SECRET_KEY no está definida en .env');
   throw new Error('STRIPE_SECRET_KEY no está configurada');
 }
 

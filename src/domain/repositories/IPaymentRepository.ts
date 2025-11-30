@@ -7,6 +7,7 @@ export interface CreatePaymentDTO {
   userId: string;
   userEmail: string;
   userName: string;
+  kitchenId: string;
   description?: string;
   successUrl: string;
   cancelUrl: string;
@@ -14,14 +15,13 @@ export interface CreatePaymentDTO {
 
 export interface IPaymentRepository {
 
-  getBalance(): Promise<AccountBalance>;
-
+  getBalance(kitchenId?: string): Promise<AccountBalance>;
 
   getTransactionHistory(options: {
     limit: number;
     starting_after?: string;
+    kitchenId?: string;
   }): Promise<PaymentTransaction[]>;
-
 
   createCheckoutSession(data: CreatePaymentDTO): Promise<{ url: string }>;
 }

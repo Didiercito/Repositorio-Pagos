@@ -7,60 +7,79 @@ import Stripe from 'stripe';
 export class StripePaymentRepository implements IPaymentRepository {
   
   private _toDomainBalance(stripeBalance: Stripe.Balance): AccountBalance {
-    const availableAmount = stripeBalance.available[0]
-      ? stripeBalance.available[0].amount / 100
-      : 0;
-    const pendingAmount = stripeBalance.pending[0]
-      ? stripeBalance.pending[0].amount / 100
-      : 0;
-    const currency = stripeBalance.available[0]
-      ? stripeBalance.available[0].currency
-      : 'mxn';
+    const availableAmount = stripeBalance.available[0] ? stripeBalance.available[0].amount / 100 : 0;
+    const pendingAmount = stripeBalance.pending[0] ? stripeBalance.pending[0].amount / 100 : 0;
+    const currency = stripeBalance.available[0] ? stripeBalance.available[0].currency : 'mxn';
 
     return new AccountBalance(availableAmount, pendingAmount, currency);
   }
 
-  private _toDomainTransaction(tx: Stripe.BalanceTransaction): PaymentTransaction {
-    return new PaymentTransaction(
-      tx.id,
-      tx.amount / 100,
-      tx.currency,
-      tx.description,
-      tx.type,
-      tx.status,
-      new Date(tx.created * 1000)
-    );
-  }
-
-  async getBalance(): Promise<AccountBalance> {
+  async getBalance(kitchenId?: string): Promise<AccountBalance> {
     try {
-      const stripeBalance = await stripe.balance.retrieve();
-      return this._toDomainBalance(stripeBalance);
+      if (!kitchenId) {
+        const stripeBalance = await stripe.balance.retrieve();
+        return this._toDomainBalance(stripeBalance);
+      }
+
+      const params: Stripe.PaymentIntentListParams = { limit: 100 };
+      const paymentIntents = await stripe.paymentIntents.list(params);
+
+      const misPagos = paymentIntents.data.filter(pi => 
+        pi.metadata && 
+        pi.metadata.kitchenId === kitchenId && 
+        pi.status === 'succeeded'
+      );
+
+      const totalCentavos = misPagos.reduce((suma, pi) => suma + pi.amount, 0);
+
+      return new AccountBalance(
+        totalCentavos / 100, 
+        0,                  
+        'mxn'
+      );
+
     } catch (error) {
       console.error('Error en Stripe getBalance:', error);
-      throw new Error('No se pudo obtener el balance desde Stripe');
+      throw new Error('No se pudo obtener el balance');
     }
   }
 
   async getTransactionHistory(options: {
     limit: number;
     starting_after?: string;
+    kitchenId?: string;
   }): Promise<PaymentTransaction[]> {
     try {
-      const params: Stripe.BalanceTransactionListParams = {
-        limit: options.limit,
+      const params: Stripe.PaymentIntentListParams = {
+        limit: 100, 
       };
+
       if (options.starting_after) {
         params.starting_after = options.starting_after;
       }
-      const transactions = await stripe.balanceTransactions.list(params);
+      const paymentIntents = await stripe.paymentIntents.list(params);
+
+      let filteredData = paymentIntents.data;
       
-      // Mapeamos cada resultado a una instancia de nuestra Entidad
-      return transactions.data.map((tx) => this._toDomainTransaction(tx));
+      if (options.kitchenId) {
+        filteredData = filteredData.filter(pi => 
+          pi.metadata && pi.metadata.kitchenId === options.kitchenId
+        );
+      }
+
+      return filteredData.map(pi => new PaymentTransaction(
+        pi.id,
+        pi.amount / 100,
+        pi.currency,
+        pi.description,
+        'charge',
+        pi.status,
+        new Date(pi.created * 1000)
+      ));
 
     } catch (error) {
       console.error('Error en Stripe getTransactionHistory:', error);
-      throw new Error('No se pudo obtener el historial desde Stripe');
+      throw new Error('No se pudo obtener el historial de donaciones');
     }
   }
 
@@ -88,7 +107,9 @@ export class StripePaymentRepository implements IPaymentRepository {
           metadata: {
             userId: data.userId,
             userName: data.userName,
-            userEmail: data.userEmail
+            userEmail: data.userEmail,
+            kitchenId: data.kitchenId,
+            tipo: "Donación"
           }
         },
         success_url: data.successUrl,
