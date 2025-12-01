@@ -3,3 +3,7 @@ node_modules
 
 # Archivo de secretos y variables de entorno
 .env
+
+# Scripts de prueba y generadores
+src/generarToken*.ts
+.env
