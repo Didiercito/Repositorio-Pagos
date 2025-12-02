@@ -3,12 +3,11 @@ import { GetBalanceUseCase } from '../../../application/use-cases/GetBalanceUseC
 import { GetTransactionHistoryUseCase } from '../../../application/use-cases/GetTransactionHistoryUseCase';
 import { CreatePaymentUseCase } from '../../../application/use-cases/CreatePaymentUseCase';
 import { AuthServiceAdapter } from '../../adapters/AuthServiceAdapter';
-// 1. Importamos el nuevo adaptador
 import { KitchenServiceAdapter } from '../../adapters/KitchenServiceAdapter';
 
 export class PaymentController {
   private authAdapter: AuthServiceAdapter;
-  private kitchenAdapter: KitchenServiceAdapter; // Propiedad nueva
+  private kitchenAdapter: KitchenServiceAdapter;
 
   constructor(
     private readonly getBalanceUseCase: GetBalanceUseCase,
@@ -16,7 +15,7 @@ export class PaymentController {
     private readonly createPaymentUseCase: CreatePaymentUseCase
   ) {
     this.authAdapter = new AuthServiceAdapter();
-    this.kitchenAdapter = new KitchenServiceAdapter(); // Inicializamos
+    this.kitchenAdapter = new KitchenServiceAdapter();
   }
 
   private formatTransaction(tx: any) {
@@ -46,22 +45,15 @@ export class PaymentController {
     };
   }
 
-  // --- HELPER PARA OBTENER KITCHEN ID ---
   private async resolveKitchenId(user: any, token: string): Promise<string | undefined> {
-    // 1. Si el token ya lo trae (futuro), úsalo
     if (user?.kitchenId) return user.kitchenId;
 
-    // 2. Si es Admin de Cocina, preguntar a Kitchen Service
     if (user?.roles?.includes('Admin_cocina')) {
-      console.log('🔍 Buscando ID de cocina en microservicio Kitchen...');
       const remoteId = await this.kitchenAdapter.getMyKitchenId(token);
       if (remoteId) {
-        console.log(`✅ Cocina encontrada: ID ${remoteId}`);
         return remoteId;
       }
     }
-
-    // 3. Si es Super Admin, devuelve undefined (para ver todo)
     return undefined;
   }
 
@@ -69,20 +61,23 @@ export class PaymentController {
     try {
       const user = req.user;
       const token = req.headers.authorization || '';
-
-      // Usamos la lógica inteligente para obtener el ID
+      
       const kitchenId = await this.resolveKitchenId(user, token);
 
       const balance = await this.getBalanceUseCase.execute(kitchenId);
       
-      res.status(200).json({ 
+      return res.status(200).json({ 
         success: true, 
         mensaje: kitchenId ? `Balance calculado para cocina ID: ${kitchenId}` : 'Balance Global (SuperAdmin)',
         data: balance 
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      res.status(500).json({ success: false, message: 'Error al obtener el balance', error: errorMessage });
+      return res.status(500).json({
+        success: false,
+        message: 'Error al obtener el balance',
+        error: errorMessage,
+      });
     }
   };
 
@@ -94,16 +89,21 @@ export class PaymentController {
       const user = req.user;
       const token = req.headers.authorization || '';
       
-      // Usamos la lógica inteligente para obtener el ID
       const kitchenId = await this.resolveKitchenId(user, token);
 
-      const options: any = { limit, kitchenId: kitchenId };
-      if (starting_after) options.starting_after = starting_after;
+      const options: any = { 
+        limit, 
+        kitchenId: kitchenId 
+      };
+      
+      if (starting_after) {
+        options.starting_after = starting_after;
+      }
 
       const transactions = await this.getTransactionHistoryUseCase.execute(options);
       const datosBonitos = transactions.map(this.formatTransaction);
 
-      res.status(200).json({ 
+      return res.status(200).json({ 
         success: true, 
         mensaje: kitchenId ? `Historial filtrado para cocina ID: ${kitchenId}` : 'Historial Global (SuperAdmin)',
         data: datosBonitos 
@@ -111,7 +111,11 @@ export class PaymentController {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      res.status(500).json({ success: false, message: 'Error historial', error: errorMessage });
+      return res.status(500).json({
+        success: false,
+        message: 'Error al obtener el historial de transacciones',
+        error: errorMessage,
+      });
     }
   };
 
@@ -122,8 +126,19 @@ export class PaymentController {
       const user = req.user;
       const rawToken = req.headers.authorization?.replace('Bearer ', '') || '';
 
-      if (!user) return res.status(401).json({ success: false, message: 'No identificado.' });
-      if (!kitchenId) return res.status(400).json({ success: false, message: 'Falta ID cocina.' });
+      if (!user) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'No se pudo identificar al usuario. Revisa tu token.' 
+        });
+      }
+
+      if (!kitchenId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Falta el ID de la cocina en la URL.'
+        });
+      }
 
       const userData = await this.authAdapter.getUserData(user.userId.toString(), rawToken);
 
@@ -147,11 +162,15 @@ export class PaymentController {
         cancelUrl: 'https://google.com?status=cancel'
       });
 
-      res.status(201).json({ success: true, data: result });
+      return res.status(201).json({ success: true, data: result });
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      res.status(500).json({ success: false, message: 'Error creando pago', error: errorMessage });
+      return res.status(500).json({
+        success: false,
+        message: 'Error al generar el link de pago',
+        error: errorMessage,
+      });
     }
   };
 }

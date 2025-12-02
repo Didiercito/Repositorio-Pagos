@@ -4,9 +4,8 @@ import Stripe from 'stripe';
 
 class WebhookController {
   
-  async handleWebhook(req: Request, res: Response) {
+  handleWebhook = async (req: Request, res: Response) => {
     const sig = req.headers['stripe-signature'];
-
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
     let event: Stripe.Event;
@@ -27,14 +26,12 @@ class WebhookController {
     
     if (event.type === 'payment_intent.succeeded') {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
-
       const metadata = paymentIntent.metadata;
       const monto = paymentIntent.amount / 100; 
       
       console.log('\n¡PAGO CONFIRMADO (WEBHOOK)!');
       console.log(`Monto recibido: $${monto} ${paymentIntent.currency}`);
       
-
       if (metadata && metadata.userId) {
         console.log(`Usuario Identificado: ${metadata.userEmail} (ID: ${metadata.userId})`);
         console.log('Acción: El sistema ha registrado la donación exitosamente.');
@@ -43,7 +40,8 @@ class WebhookController {
       }
       console.log('-------------------------------------------\n');
     }
-    res.json({ received: true });
+
+    return res.json({ received: true });
   }
 }
 
