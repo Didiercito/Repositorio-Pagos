@@ -1,19 +1,30 @@
+import 'reflect-metadata'; // Necesario para TypeORM
 import dotenv from 'dotenv';
 dotenv.config(); 
 
 import app from './app';
-// 1. Importar el consumidor
-import { KitchenRegisteredConsumer } from './infrastructure/events/KitchenRegisteredConsumer'; // <--- NUEVO
+import { KitchenRegisteredConsumer } from './infrastructure/events/KitchenRegisteredConsumer';
+// Importamos la conexión a la BD
+import { AppDataSource } from './infrastructure/database/config/data-source';
 
 const PORT = process.env.PORT || 3005;
 
 async function startServer() {
   try {
     console.log('🚀 Iniciando Servidor de Pagos...');
+
+    // 1. Conectar Base de Datos
+    try {
+      await AppDataSource.initialize();
+      console.log('✅ Base de Datos conectada y sincronizada.');
+    } catch (dbError) {
+      console.error('❌ Error conectando a la Base de Datos:', dbError);
+      process.exit(1); // Si falla la BD, detenemos todo
+    }
     
-    // 2. Iniciar el escuchador de eventos
-    const consumer = new KitchenRegisteredConsumer(); // <--- NUEVO
-    await consumer.start();                           // <--- NUEVO
+    // 2. Iniciar RabbitMQ
+    const consumer = new KitchenRegisteredConsumer();
+    await consumer.start();
 
     app.listen(PORT, () => {
       console.log(`🌐 Servidor corriendo en el puerto ${PORT}`);

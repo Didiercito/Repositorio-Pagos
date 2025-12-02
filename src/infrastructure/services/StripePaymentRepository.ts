@@ -4,8 +4,15 @@ import { AccountBalance } from '../../domain/entities/AccountBalance';
 import { PaymentTransaction } from '../../domain/entities/PaymentTransaction';
 import Stripe from 'stripe';
 
+// --- IMPORTS DE BASE DE DATOS ---
+import { AppDataSource } from '../database/config/data-source';
+import { PaymentEntity } from '../database/entities/Payment.entity';
+
 export class StripePaymentRepository implements IPaymentRepository {
   
+  // 1. Inicializamos el repositorio de la BD Local
+  private dbRepository = AppDataSource.getRepository(PaymentEntity);
+
   private _toDomainBalance(stripeBalance: Stripe.Balance): AccountBalance {
     const availableAmount = stripeBalance.available[0] ? stripeBalance.available[0].amount / 100 : 0;
     const pendingAmount = stripeBalance.pending[0] ? stripeBalance.pending[0].amount / 100 : 0;
@@ -20,7 +27,7 @@ export class StripePaymentRepository implements IPaymentRepository {
         const stripeBalance = await stripe.balance.retrieve();
         return this._toDomainBalance(stripeBalance);
       }
-
+      
       const params: Stripe.PaymentIntentListParams = { limit: 100 };
       const paymentIntents = await stripe.paymentIntents.list(params);
 
@@ -84,10 +91,11 @@ export class StripePaymentRepository implements IPaymentRepository {
 
   async createCheckoutSession(data: CreatePaymentDTO): Promise<{ url: string }> {
     try {
+      // 1. Crear sesión en Stripe
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         mode: 'payment',
-        customer_email: data.donorEmail, 
+        customer_email: data.donorEmail,
         line_items: [
           {
             price_data: {
@@ -119,6 +127,22 @@ export class StripePaymentRepository implements IPaymentRepository {
       });
 
       if (!session.url) throw new Error('Stripe no devolvió la URL');
+
+      // --- 2. GUARDAR EN BASE DE DATOS LOCAL (NUEVO) ---
+      const localPayment = this.dbRepository.create({
+        stripeId: session.id,       // Guardamos el ID de sesión para rastrearlo
+        amount: data.amount,
+        currency: data.currency,
+        status: 'pending',          // Inicialmente pendiente hasta que paguen
+        kitchenId: data.kitchenId,
+        donorName: `${data.donorNames} ${data.donorFirstLastName}`,
+        donorEmail: data.donorEmail
+      });
+
+      await this.dbRepository.save(localPayment);
+      console.log(`💾 Pago registrado en BD Local con ID: ${localPayment.id}`);
+      // -------------------------------------------------
+
       return { url: session.url };
 
     } catch (error) {

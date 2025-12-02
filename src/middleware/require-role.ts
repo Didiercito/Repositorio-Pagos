@@ -40,12 +40,15 @@ export function requireRole(requiredRole: string) {
         });
       }
 
-      req.user = decoded; 
-      next();
+      req.user = decoded;
+      
+      // --- CORRECCIÓN AQUÍ: Agregamos 'return' ---
+      return next();
 
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
+        error instanceof Error ?
+        error.message : 'Unknown error';
       return res
         .status(401)
         .json({ success: false, message: 'Invalid token', error: errorMessage });
