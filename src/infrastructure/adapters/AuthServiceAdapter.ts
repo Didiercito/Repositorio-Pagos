@@ -15,7 +15,7 @@ export class AuthServiceAdapter {
   private authUrl: string;
 
   constructor() {
-    this.authUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:3001/api/v1';
+    this.authUrl = process.env.AUTH_SERVICE_URL || '';
   }
 
   async getUserData(userId: string, token: string): Promise<UserData | null> {

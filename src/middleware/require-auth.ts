@@ -22,7 +22,7 @@ export function requireAuth(
   req: Request,
   res: Response,
   next: NextFunction
-) {
+): Response | void { 
   const header = req.headers.authorization;
 
   if (!header) {
@@ -35,14 +35,16 @@ export function requireAuth(
   const jwtSecret = process.env.JWT_SECRET;
 
   if (!jwtSecret) {
-    throw new Error('JWT_SECRET no está definida en .env');
+    return res
+      .status(500)
+      .json({ success: false, message: 'JWT_SECRET environment variable missing' });
   }
 
   try {
     const decoded = jwt.verify(token, jwtSecret) as UserPayload;
     req.user = decoded;
 
-    next();
+    return next();
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return res
