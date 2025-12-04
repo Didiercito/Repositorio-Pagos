@@ -16,7 +16,6 @@ export const rabbitSettings = {
 };
 
 class RabbitMQ {
-  // CAMBIO: Usamos 'any' para evitar conflictos de tipos estrictos de TS
   connection: any = null;
   channel: any = null;
 
@@ -44,7 +43,6 @@ class RabbitMQ {
   async publish(routingKey: string, message: any) {
     if (!this.channel) await this.connect();
     
-    // El '?' evita que falle si channel es null
     this.channel?.publish(
       rabbitSettings.exchange,
       routingKey,
