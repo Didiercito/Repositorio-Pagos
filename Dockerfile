@@ -7,9 +7,9 @@ COPY tsconfig.json ./
 
 RUN npm install
 
-COPY . .
+COPY ./src ./src
 
-RUN npm run build
+RUN npx tsc
 
 FROM node:20-alpine
 
@@ -20,8 +20,5 @@ COPY package*.json ./
 RUN npm install --omit=dev
 
 COPY --from=builder /app/dist ./dist
-
-COPY --from=builder /app/tsconfig.json ./
-COPY --from=builder /app/package*.json ./
 
 CMD ["node", "dist/server.js"]
