@@ -8,10 +8,8 @@ export class KitchenRegisteredConsumer {
 
     if (!channel) return;
 
-    // 1. Crear la cola exclusiva para Pagos
     await channel.assertQueue(rabbitSettings.queues.payments, { durable: true });
     
-    // 2. Unir la cola al evento que emite Kitchen ("kitchen.admin.registered")
     await channel.bindQueue(
       rabbitSettings.queues.payments,
       rabbitSettings.exchange,
@@ -20,8 +18,6 @@ export class KitchenRegisteredConsumer {
 
     console.log(`👂 Escuchando eventos en: ${rabbitSettings.queues.payments}`);
 
-    // 3. Procesar mensajes
-    // CAMBIO AQUÍ: Agregamos ': any' al parámetro msg
     channel.consume(rabbitSettings.queues.payments, async (msg: any) => {
       if (!msg) return;
 
@@ -31,7 +27,6 @@ export class KitchenRegisteredConsumer {
 
         const { kitchenId, email, names, firstLastName } = data;
 
-        // --- ACCIÓN SAGA: Crear Cliente en Stripe ---
         const customer = await stripe.customers.create({
           email: email,
           name: `${names} ${firstLastName}`,
@@ -44,7 +39,6 @@ export class KitchenRegisteredConsumer {
 
         console.log(`✅ Cliente Stripe creado: ${customer.id} para Cocina ID: ${kitchenId}`);
 
-        // --- RESPUESTA SAGA: Avisar a Kitchen ---
         const responsePayload = {
           kitchenId: kitchenId,
           stripeCustomerId: customer.id,
